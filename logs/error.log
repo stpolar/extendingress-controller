@@ -1,0 +1,62 @@
+2018/07/27 15:01:43 [emerg] 5856#14816: unknown directive "hehe" in ./nginx-test.conf:25
+2018/07/27 15:11:27 [emerg] 23252#23492: unknown directive "access_lo" in ./nginx-test.conf:25
+2018/07/27 15:58:19 [emerg] 2552#916: unknown directive "access_lo" in ./nginx-test.conf:25
+2018/07/30 14:03:35 [emerg] 7088#23116: unknown directive "haah" in ./nginx-test.conf:17
+2018/07/30 16:41:50 [emerg] 21284#20132: CreateFile() "K:/etc/nginx/nginx.conf" failed (3: The system cannot find the path specified)
+2018/07/31 15:27:51 [emerg] 26524#21288: unexpected end of file, expecting "}" in ./nginx-test.conf:41
+2018/07/31 15:27:51 [emerg] 23280#252: unexpected end of file, expecting "}" in ./nginx-test.conf:40
+2018/07/31 15:27:52 [emerg] 17116#22824: unexpected end of file, expecting "}" in ./nginx-test.conf:23
+2018/07/31 15:33:43 [emerg] 9508#24880: unexpected end of file, expecting "}" in ./nginx-test.conf:41
+2018/07/31 15:33:43 [emerg] 17116#11924: unexpected end of file, expecting "}" in ./nginx-test.conf:40
+2018/07/31 15:33:44 [emerg] 26500#25032: unexpected end of file, expecting "}" in ./nginx-test.conf:23
+2018/07/31 15:37:42 [emerg] 14784#1652: unexpected end of file, expecting "}" in ./nginx-test.conf:41
+2018/07/31 15:37:42 [emerg] 22752#24220: unexpected end of file, expecting "}" in ./nginx-test.conf:40
+2018/07/31 15:37:43 [emerg] 26248#15984: unexpected end of file, expecting "}" in ./nginx-test.conf:23
+2018/07/31 15:39:01 [emerg] 26092#21784: unexpected end of file, expecting "}" in ./nginx-test.conf:41
+2018/07/31 15:39:01 [emerg] 14508#26580: unexpected end of file, expecting "}" in ./nginx-test.conf:40
+2018/07/31 15:39:03 [emerg] 20284#25440: unexpected end of file, expecting "}" in ./nginx-test.conf:23
+2018/07/31 15:41:43 [emerg] 22316#2720: unexpected "}" in ./nginx-test.conf:1
+2018/07/31 15:41:43 [emerg] 26004#16304: unexpected "}" in ./nginx-test.conf:1
+2018/07/31 15:41:44 [emerg] 20116#19608: unexpected "}" in ./nginx-test.conf:1
+2018/07/31 15:45:26 [emerg] 22676#26376: unexpected "}" in ./nginx-test.conf:1
+2018/07/31 15:45:26 [emerg] 16480#26548: unexpected "}" in ./nginx-test.conf:1
+2018/07/31 15:45:27 [emerg] 26104#26024: unexpected "}" in ./nginx-test.conf:1
+2018/07/31 15:49:20 [emerg] 25700#16892: unexpected "}" in ./nginx-test.conf:1
+2018/07/31 15:49:20 [emerg] 15868#20260: unexpected "}" in ./nginx-test.conf:1
+2018/07/31 15:49:21 [emerg] 16812#18196: unexpected "}" in ./nginx-test.conf:1
+2018/07/31 15:52:00 [emerg] 5648#3924: unexpected "}" in ./nginx-test.conf:1
+2018/07/31 15:52:00 [emerg] 26288#25084: unexpected "}" in ./nginx-test.conf:1
+2018/07/31 15:54:05 [emerg] 5656#25852: invalid port in "0" of the "listen" directive in ./nginx-test.conf:42
+2018/07/31 15:54:05 [emerg] 21800#19432: invalid port in "0" of the "listen" directive in ./nginx-test.conf:41
+2018/07/31 15:54:06 [emerg] 8504#23252: invalid port in "0" of the "listen" directive in ./nginx-test.conf:24
+2018/07/31 16:05:04 [emerg] 8472#18636: reuseport is not supported on this platform, ignored in ./nginx-test.conf:41
+2018/07/31 16:05:04 [emerg] 8472#18636: reuseport is not supported on this platform, ignored in ./nginx-test.conf:42
+2018/07/31 16:05:04 [emerg] 8472#18636: unexpected "}" in ./nginx-test.conf:58
+2018/07/31 16:05:04 [emerg] 17652#26304: reuseport is not supported on this platform, ignored in ./nginx-test.conf:42
+2018/07/31 16:05:04 [emerg] 17652#26304: reuseport is not supported on this platform, ignored in ./nginx-test.conf:43
+2018/07/31 16:05:04 [emerg] 17652#26304: unexpected "}" in ./nginx-test.conf:59
+2018/07/31 16:05:05 [emerg] 12688#25948: reuseport is not supported on this platform, ignored in ./nginx-test.conf:24
+2018/07/31 16:05:05 [emerg] 12688#25948: reuseport is not supported on this platform, ignored in ./nginx-test.conf:25
+2018/07/31 16:05:05 [emerg] 12688#25948: unexpected "}" in ./nginx-test.conf:41
+2018/07/31 16:07:07 [emerg] 11508#424: reuseport is not supported on this platform, ignored in ./nginx-test.conf:42
+2018/07/31 16:07:07 [emerg] 11508#424: reuseport is not supported on this platform, ignored in ./nginx-test.conf:43
+2018/07/31 16:07:07 [emerg] 11508#424: host not found in upstream "503" in ./nginx-test.conf:58
+2018/07/31 16:07:18 [emerg] 26412#5952: reuseport is not supported on this platform, ignored in ./nginx-test.conf:41
+2018/07/31 16:07:18 [emerg] 26412#5952: reuseport is not supported on this platform, ignored in ./nginx-test.conf:42
+2018/07/31 16:07:18 [emerg] 26412#5952: host not found in upstream "503" in ./nginx-test.conf:57
+2018/07/31 16:07:22 [emerg] 22896#14508: reuseport is not supported on this platform, ignored in ./nginx-test.conf:24
+2018/07/31 16:07:22 [emerg] 22896#14508: reuseport is not supported on this platform, ignored in ./nginx-test.conf:25
+2018/07/31 16:07:22 [emerg] 22896#14508: host not found in upstream "503" in ./nginx-test.conf:40
+2018/07/31 16:10:50 [emerg] 3112#9476: host not found in upstream "503" in ./nginx-test.conf:23
+2018/07/31 16:11:01 [emerg] 2260#21540: host not found in upstream "503" in ./nginx-test.conf:22
+2018/07/31 16:11:05 [emerg] 21612#884: host not found in upstream "503" in ./nginx-test.conf:36
+2018/07/31 16:14:46 [emerg] 26372#12084: host not found in upstream "503" in ./nginx-test.conf:23
+2018/07/31 16:14:58 [emerg] 7788#2720: host not found in upstream "503" in ./nginx-test.conf:22
+2018/07/31 16:17:44 [emerg] 21960#20264: host not found in upstream "503" in ./nginx-test.conf:23
+2018/07/31 16:17:55 [emerg] 15280#9516: host not found in upstream "503" in ./nginx-test.conf:22
+2018/07/31 16:23:34 [emerg] 11816#3712: host not found in upstream "503" in ./nginx-test.conf:23
+2018/07/31 16:45:41 [emerg] 26008#24052: "proxy_pass" directive is not allowed here in ./nginx-test.conf:26
+2018/07/31 17:16:16 [emerg] 18212#26548: unknown directive "cors" in ./nginx-test.conf:66
+2018/08/20 10:11:19 [emerg] 16904#17936: "worker_connections" directive is not allowed here in ./nginx-test.conf:5
+2018/08/20 10:11:50 [emerg] 8304#16684: "worker_connections" directive is not allowed here in ./nginx-test.conf:5
+2018/08/20 10:13:45 [emerg] 11312#18032: "worker_connections" directive is not allowed here in ./nginx-test.conf:5

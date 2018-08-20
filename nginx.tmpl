@@ -1,0 +1,139 @@
+{{- $all := . }}
+{{- $config := .Config }}
+{{- $commonConf := .CommonConf }}
+{{- $httpConf := .HttpConf }}
+{{- $eventConf := .EventConf }}
+{{- $servers := .Servers }}
+{{- $upstreams := .Upstreams }}
+daemon on;
+
+# Custom headers for response
+{{- range $k, $v := $commonConf }}
+{{ $k }}            {{ $v }};
+{{- end }}
+
+events {
+    {{- range $k, $v := $eventConf }}
+	{{ $k }}            {{ $v }};
+    {{- end }}
+}
+
+http {
+
+    {{- range $k, $v := $httpConf }}
+	{{ $k }}            {{ $v }};
+    {{- end }}
+
+	{{- range $upstreamk, $upstreamv := $upstreams }}
+	upstream {{ $upstreamk }} {
+		{{- range $conk, $conv := $upstreamv.Conf }}
+        {{- if eq $conk "lbalg" }}
+        # Load balance algorithm; empty for round robin, which is the default
+        {{ $conv }};
+		{{- else }}
+		{{ $conk }}            {{ $conv }};
+        {{- end }}
+		{{- end }}
+
+		{{- range $i, $server := $upstreamv.Endpoints }}
+        server {{ $server }}:{{ $upstreamv.Port }} max_fails=0 fail_timeout=0;
+        {{- end }}
+	}
+	{{- end }}
+	
+    {{- range $serk, $serv := $servers }}
+	server {
+		server_name {{ $serv.ServerName }};
+		listen {{ $serv.Listen }};
+        listen [::]:{{ $serv.Listen }};
+
+		{{- range $conk, $conv := $serv.Conf }}
+		{{ $conk }}            {{ $conv }};
+		{{- end }}
+
+		{{- range $lock, $locv := $serv.Locations }}
+		location {{ $lock}} {
+			{{- if $locv.Cors }}
+                {{- template "CORS" }}
+            {{- end }}
+
+			{{- range $conk, $conv := $locv.Conf }}
+			{{ $conk }}            {{ $conv }};
+			{{- end }}
+
+            {{- if ne $locv.ProxyPass "503" }}
+			proxy_pass http://{{ $locv.ProxyPass }};
+            {{ else }}
+            return 503;
+            {{ end }}
+		}
+		{{- end }}
+	}
+    {{- end }}
+
+    # default server, used for NGINX healthcheck and access to nginx stats
+    server {
+        # Use the port {{ $config.ListenPort.Status }} (random value just to avoid known ports) as default port for nginx.
+        listen {{ $config.ListenPort.Status }} default_server backlog=511;
+        listen [::]:{{ $config.ListenPort.Status }} default_server backlog=511;
+
+        location {{ $config.DefHealthzURL }} {
+            access_log off;
+            return 200;
+        }
+
+        location /nginx_status {
+            set $proxy_upstream_name "internal";
+
+            access_log off;
+            stub_status on;
+        }
+
+        location / {
+            return 503;
+        }
+    }
+}
+
+{{/* CORS support from https://michielkalkman.com/snippets/nginx-cors-open-configuration.html */}}
+{{- define "CORS" }}
+         if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' '*';
+            #
+            # Om nom nom cookies
+            #
+            add_header 'Access-Control-Allow-Credentials' 'true';
+            add_header 'Access-Control-Allow-Methods' 'GET, PUT, POST, DELETE, OPTIONS';
+            #
+            # Custom headers and headers various browsers *should* be OK with but aren't
+            #
+            add_header 'Access-Control-Allow-Headers' 'DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization';
+            #
+            # Tell client that this pre-flight info is valid for 20 days
+            #
+            add_header 'Access-Control-Max-Age' 1728000;
+            add_header 'Content-Type' 'text/plain charset=UTF-8';
+            add_header 'Content-Length' 0;
+            return 204;
+         }
+         set $cors_method 0;
+         if ($request_method = 'GET') {
+            set $cors_method 1;
+         }
+         if ($request_method = 'PUT') {
+            set $cors_method 1;
+         }
+         if ($request_method = 'POST') {
+            set $cors_method 1;
+         }
+         if ($request_method = 'DELETE') {
+            set $cors_method 1;
+         }
+
+         if ($cors_method = 1) {
+            add_header 'Access-Control-Allow-Origin' '*' always;
+            add_header 'Access-Control-Allow-Credentials' 'true';
+            add_header 'Access-Control-Allow-Methods' 'GET, PUT, POST, DELETE, OPTIONS';
+            add_header 'Access-Control-Allow-Headers' 'DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization';
+         }
+{{ end }}
