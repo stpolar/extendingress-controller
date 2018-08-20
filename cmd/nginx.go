@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"errors"
@@ -172,7 +172,7 @@ func getProxyPass(namesapce, ingressName, epName, port, location string) string 
 	}
 }
 
-func resetNginxComByOS() {
+func ResetNginxComByOS() {
 	if runtime.GOOS == "windows" {
 		NginxConfFile = "./nginx.conf"
 		NginxTestFile = "./nginx-test.conf"

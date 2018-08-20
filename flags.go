@@ -7,9 +7,10 @@ import (
 	"github.com/golang/glog"
 	"fmt"
 	ing_net "k8s.io/extendingress-controller/net"
+	"k8s.io/extendingress-controller/cmd"
 )
 
-func parseFlags() (bool, *Configuration, error) {
+func parseFlags() (bool, *cmd.Configuration, error) {
 	var (
 		flags= pflag.NewFlagSet("", pflag.ExitOnError)
 
@@ -80,7 +81,7 @@ defined by the healthz-port parameter are forwarded internally to this path.`)
 	if !ing_net.IsPortAvailable(*statusPort) {
 		return false, nil, fmt.Errorf("Port %v is already in use. Please check the flag --status-port", *statusPort)
 	}
-	config := &Configuration{
+	config := &cmd.Configuration{
 		ApiserverHost: 		apiserverHost,
 		CommonConf:			commonConf,
 		EventConf:			eventConf,
@@ -88,7 +89,7 @@ defined by the healthz-port parameter are forwarded internally to this path.`)
 		KubeConfigFile: 	kubeConfigFile,
 		DefHealthzURL:		defHealthzURL,
 		Version:			showVersion,
-		ListenPort:		ListenPorts{
+		ListenPort:		cmd.ListenPorts{
 			HTTP:			*httpPort,
 			HTTPS: 			*httpsPort,
 			Status: 		*statusPort,

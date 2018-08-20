@@ -5,7 +5,7 @@ purpose:	watch the extendingress resource and endpoint resource, rewrite the
 			nginx.conf and reload nginx.
 */
 
-package main
+package cmd
 
 import (
 	"fmt"

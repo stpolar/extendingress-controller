@@ -30,13 +30,14 @@ import (
 	informers "k8s.io/extendingress-controller/pkg/client/informers/externalversions"
 	"k8s.io/sample-controller/pkg/signals"
 	"runtime"
+	"k8s.io/extendingress-controller/cmd"
 )
 
 
 
 func main() {
 	runtime.GOMAXPROCS(3)
-	resetNginxComByOS()
+	cmd.ResetNginxComByOS()
 	_, conf, err := parseFlags()
 	if err != nil {
 		glog.Fatal(err)
@@ -63,7 +64,7 @@ func main() {
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second* 0)
 	extendIngressInformerFactory := informers.NewSharedInformerFactory(extendIngressClient, time.Second* 0)
 
-	controller := NewController(kubeClient, extendIngressClient,
+	controller := cmd.NewController(kubeClient, extendIngressClient,
 		kubeInformerFactory.Core().V1().Endpoints(),
 		kubeInformerFactory.Core().V1().ConfigMaps(),
 		extendIngressInformerFactory.Extendingresscontroller().V1alpha1().ExtendIngresses(),
