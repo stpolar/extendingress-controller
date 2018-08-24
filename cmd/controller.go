@@ -22,13 +22,13 @@ import (
 	"reflect"
 	"strings"
 	"time"
-
+	"errors"
 	"os"
 	"runtime/debug"
 
 	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -45,6 +45,9 @@ import (
 	extendingresscheme "k8s.io/extendingress-controller/pkg/client/clientset/versioned/scheme"
 	informers "k8s.io/extendingress-controller/pkg/client/informers/externalversions/extendingresscontroller/v1alpha1"
 	listers "k8s.io/extendingress-controller/pkg/client/listers/extendingresscontroller/v1alpha1"
+	"k8s.io/kubernetes/pkg/apis/componentconfig"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
 
 const controllerAgentName = "extendingress-controller"
@@ -56,9 +59,6 @@ const (
 	// to sync due to a Deployment of the same name already existing.
 	ErrResourceExists = "ErrResourceExists"
 
-	// MessageResourceExists is the message used for Events when a resource
-	// fails to sync due to a Deployment already existing
-	MessageResourceExists = "Resource %q already exists and is not managed by Extendingress"
 	// MessageResourceSynced is the message used for an Event fired when a Extendingress
 	// is synced successfully
 	MessageResourceSynced = "Extendingress synced successfully"
@@ -102,7 +102,12 @@ type Controller struct {
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
+
+	election bool
+	leaderRun leaderProcess
 }
+
+type leaderProcess func()
 
 func NewController(
 	kubeclientset kubernetes.Interface,
@@ -143,6 +148,7 @@ func NewController(
 		},
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ExtendIngresses"),
 		recorder:  recorder,
+		election:  false,
 	}
 
 	glog.Info("Setting up event handlers")
@@ -179,7 +185,7 @@ func NewController(
 			}
 			epStrings, err := controller.handleEndpointObj(obj)
 			if err != nil {
-				glog.Error("error when ep fliter", err)
+				glog.Error(err)
 			}
 			if len(epStrings) > 0 {
 				controller.enqueueEndpoint(epStrings, EndpointADD+"/")
@@ -199,7 +205,7 @@ func NewController(
 
 			epStrings, err := controller.handleEndpointObj(new)
 			if err != nil {
-				glog.Error("error when ep fliter", err)
+				glog.Error(err)
 			}
 			if len(epStrings) > 0 {
 				controller.enqueueEndpoint(epStrings, EndpointUpdate+"/")
@@ -208,7 +214,7 @@ func NewController(
 		DeleteFunc: func(obj interface{}) {
 			epStrings, err := controller.handleEndpointObj(obj)
 			if err != nil {
-				glog.Error("error when ep fliter", err)
+				glog.Error(err)
 			}
 			if len(epStrings) > 0 {
 				controller.enqueueEndpoint(epStrings, EndpointDel+"/")
@@ -255,6 +261,48 @@ func NewController(
 			}
 		},
 	})
+
+	electionRun := func(stopCh <-chan struct{}) {
+		ticker := time.NewTicker(time.Second)
+		for {
+			<-ticker.C
+			controller.election = true
+		}
+		<-stopCh
+	}
+
+	LeaderElection := componentconfig.KubeSchedulerLeaderElectionConfiguration{
+		 	componentconfig.LeaderElectionConfiguration{
+				LeaderElect: true,
+				LeaseDuration: metav1.Duration{Duration: config.LeaseDuration},
+				RenewDeadline: metav1.Duration{Duration: config.RenewDuration},
+				RetryPeriod: metav1.Duration{Duration: config.RetryPeriodDuration},
+				ResourceLock: config.ResourceLock,
+			}, config.LockObjectNamespace,
+			config.LockObjectName,
+	}
+
+	leaderElectionConfig, err := controller.makeLeaderElectionConfig(LeaderElection, kubeclientset, recorder)
+	if err != nil {
+		fmt.Errorf("couldn't create leader elector: %v", err)
+	}
+	leaderElectionConfig.Callbacks = leaderelection.LeaderCallbacks{
+		OnStartedLeading: electionRun,
+		OnStoppedLeading: func() {
+			controller.election = false
+			runtime.HandleError(fmt.Errorf("lost master"))
+		},
+	}
+	leaderElector, err := leaderelection.NewLeaderElector(*leaderElectionConfig)
+	if err != nil {
+		fmt.Errorf("couldn't create leader elector: %v", err)
+	}
+
+	controller.leaderRun = func(){
+		glog.V(4).Info("begin election!")
+		leaderElector.Run()
+	}
+
 	return controller
 }
 
@@ -304,25 +352,30 @@ func (c *Controller) handleEndpointObj(obj interface{}) ([]string, error) {
 		name := object.GetName()
 		extendIngress := c.extendIngressStore.List()
 		for _, ingress := range extendIngress {
+			// convert interface{} to ExtendIngress type
 			ingress := ingress.(*extendingressv1alpha1.ExtendIngress)
-			if ingress.GetNamespace() == namespace {
-				if len(ingress.Spec.Rules) > 0 {
-					for _, rule := range ingress.Spec.Rules {
-						if len(rule.HTTP.Paths) > 0 {
-							for _, path := range rule.HTTP.Paths {
-								if path.Backend.ServiceName == name {
-									epString = append(epString, getProxyPass(namespace, ingress.Name,
-										name, path.Backend.ServicePort.String(), path.Path))
-								}
+			// check there rule exit in this ingress
+			if ingress.GetNamespace() == namespace && len(ingress.Spec.Rules) > 0 {
+				// if define rules, loop it
+				for _, rule := range ingress.Spec.Rules {
+					// check the paths len lager than 0
+					if len(rule.HTTP.Paths) > 0 {
+						for _, path := range rule.HTTP.Paths {
+							// get proxypass
+							if path.Backend.ServiceName == name {
+								epString = append(epString, getProxyPass(namespace, ingress.Name,
+									name, path.Backend.ServicePort.String(), path.Path))
 							}
 						}
+					} else {
+						continue
 					}
 				}
 			}
 		}
 		return epString, nil
 	}
-	return nil, nil
+	return nil, errors.New("error when ep fliter")
 }
 
 // handleConfigmapObj will take any resource implementing metav1.Object and attempt
@@ -364,6 +417,9 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	if ok := cache.WaitForCacheSync(stopCh, c.endpointSynced, c.configmapSynced, c.extendIngressSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
+
+	// run leader fun()
+	go c.leaderRun()
 
 	glog.Info("Starting workers")
 	// Launch two workers to process Extendingress resources
@@ -514,6 +570,34 @@ func (c *Controller) isLabelSelectorMatching(selector map[string]string, labelSe
 	return true
 }
 
+// makeLeaderElectionConfig builds a leader election configuration. It will
+// create a new resource lock associated with the configuration.
+func (c *Controller) makeLeaderElectionConfig(config componentconfig.KubeSchedulerLeaderElectionConfiguration, client kubernetes.Interface, recorder record.EventRecorder) (*leaderelection.LeaderElectionConfig, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get hostname: %v", err)
+	}
+
+	rl, err := resourcelock.New(config.ResourceLock,
+		config.LockObjectNamespace,
+		config.LockObjectName,
+		client.CoreV1(),
+		resourcelock.ResourceLockConfig{
+			Identity:      hostname,
+			EventRecorder: recorder,
+		})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create resource lock: %v", err)
+	}
+
+	return &leaderelection.LeaderElectionConfig{
+		Lock:          rl,
+		LeaseDuration: config.LeaseDuration.Duration,
+		RenewDeadline: config.RenewDeadline.Duration,
+		RetryPeriod:   config.RetryPeriod.Duration,
+	}, nil
+}
+
 // syncHandler compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the ExtendIngress resource
 // with the current status of the resource.
@@ -539,7 +623,7 @@ func (c *Controller) syncHandler(key string) error {
 			if err != nil {
 				// The ExtendIngress resource may no longer exist, in which case we stop
 				// processing.
-				if errors.IsNotFound(err) {
+				if apierrors.IsNotFound(err) {
 					runtime.HandleError(fmt.Errorf("ExtendIngress '%s' in work queue no longer exists", key))
 					return nil
 				}
@@ -557,18 +641,19 @@ func (c *Controller) syncHandler(key string) error {
 			} else {
 				glog.Error(err.Error())
 			}
-
-			_, err = c.extendIngresslientset.ExtendingresscontrollerV1alpha1().ExtendIngresses(splitStr[1]).Update(updateIngress)
-			if err != nil {
-				// The ExtendIngress resource may no longer exist, in which case we stop
-				// processing.
-				if errors.IsNotFound(err) {
-					runtime.HandleError(fmt.Errorf("ExtendIngress '%s/%s' update error, %s", splitStr[1], splitStr[2], err.Error()))
+			if c.election {
+				glog.V(4).Info("leader update extend ingress %s/%s.", splitStr[1], splitStr[2])
+				_, err = c.extendIngresslientset.ExtendingresscontrollerV1alpha1().ExtendIngresses(splitStr[1]).Update(updateIngress)
+				if err != nil {
+					// The ExtendIngress resource may no longer exist, in which case we stop
+					// processing.
+					if apierrors.IsNotFound(err) {
+						runtime.HandleError(fmt.Errorf("ExtendIngress '%s/%s' update error, %s", splitStr[1], splitStr[2], err.Error()))
+					}
 				}
 			}
 		}
 	} else if strings.Contains(key, "Endpoint") {
-
 		proxyStr := strings.Split(key[strings.Index(key, "/")+1:], ProxypassSep)
 		if len(proxyStr) == 4 {
 			proxyStr = append(proxyStr, "/")
@@ -580,7 +665,7 @@ func (c *Controller) syncHandler(key string) error {
 		if err != nil {
 			// The ExtendIngress resource may no longer exist, in which case we stop
 			// processing.
-			if errors.IsNotFound(err) {
+			if apierrors.IsNotFound(err) {
 				runtime.HandleError(fmt.Errorf("ExtendIngress %s/%s in work queue no longer exists", proxyStr[0], proxyStr[1]))
 				return nil
 			}
@@ -601,10 +686,10 @@ func (c *Controller) syncHandler(key string) error {
 		time.Sleep(time.Second)
 		if c.workqueue.Len() == 0 {
 			c.extendIngressCfg.rebuildNginxConf()
-			c.extendIngressCfg.startOrReloadNginx()
+			//c.extendIngressCfg.startOrReloadNginx()
 			c.extendIngressCfg.Start = false
 		}
 	}
-	glog.V(4).Info(c.extendIngressCfg.jsonString())
+	glog.V(3).Info(c.extendIngressCfg.jsonString())
 	return nil
 }

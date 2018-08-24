@@ -19,6 +19,7 @@ import (
 	"log"
 	"strings"
 	"runtime"
+	"time"
 )
 
 type ExtendIngressCfg struct {
@@ -66,6 +67,13 @@ type Configuration struct {
 	DefHealthzURL  *string
 	Version        *bool
 	ListenPort     ListenPorts
+	LockObjectNamespace string
+	LockObjectName	string
+	LeaderElect	bool
+	LeaseDuration time.Duration
+	RenewDuration time.Duration
+	RetryPeriodDuration time.Duration
+	ResourceLock string
 }
 
 type ListenPorts struct {

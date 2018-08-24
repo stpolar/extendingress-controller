@@ -8,8 +8,14 @@ import (
 	"fmt"
 	ing_net "k8s.io/extendingress-controller/net"
 	"k8s.io/extendingress-controller/cmd"
+	"time"
 )
 
+const (
+	LEASE_DURATION = 13 * time.Second
+	RENEW_DURATION = 8 * time.Second
+	RETRY_PERIOD_DURATION = 2 * time.Second
+)
 func parseFlags() (bool, *cmd.Configuration, error) {
 	var (
 		flags= pflag.NewFlagSet("", pflag.ExitOnError)
@@ -30,6 +36,30 @@ program runs inside a Kubernetes cluster and local discovery is attempted.`)
 
 		kubeConfigFile = flags.String("kubeconfig", "",
 			`Path to a kubeconfig file containing authorization and API server information.`)
+
+		lockObjectNamespace = flags.String("lock-object-namespace", "default" ,"Define the namespace of the lock object.")
+
+		lockObjectName = flags.String("lock-object-name", "ingress" ,"Define the name of the lock object.")
+
+		leaderElect = flags.Bool("leader-elect", false, "Start a leader election client and gain leadership before "+
+			"executing the main loop. Enable this when running replicated "+
+			"components for high availability.")
+
+		leaseDuration = flags.Duration("leader-elect-lease-duration", LEASE_DURATION , "The duration that non-leader candidates will wait after observing a leadership "+
+			"renewal until attempting to acquire leadership of a led but unrenewed leader "+
+			"slot. This is effectively the maximum duration that a leader can be stopped "+
+			"before it is replaced by another candidate. This is only applicable if leader "+
+			"election is enabled.")
+
+		renewDuration = flags.Duration("leader-elect-renew-deadline", RENEW_DURATION, "The interval between attempts by the acting master to renew a leadership slot "+
+			"before it stops leading. This must be less than or equal to the lease duration. "+
+			"This is only applicable if leader election is enabled.")
+
+		retryPeriodDuration = flags.Duration("leader-elect-retry-period", RETRY_PERIOD_DURATION, "The duration the clients should wait between attempting acquisition and renewal "+
+			"of a leadership. This is only applicable if leader election is enabled.")
+
+		resourceLock = flags.String("leader-elect-resource-lock", "endpoints","The type of resource object that is used for locking during "+
+			"leader election. Supported options are `endpoints` (default) and `configmaps`.")
 
 		//resyncPeriod = flags.Duration("sync-period", 0,
 		//	`Period at which the controller forces the repopulation of its local object stores. Disabled by default.`)
@@ -94,6 +124,13 @@ defined by the healthz-port parameter are forwarded internally to this path.`)
 			HTTPS: 			*httpsPort,
 			Status: 		*statusPort,
 		},
+		LockObjectNamespace: *lockObjectNamespace,
+		LockObjectName: *lockObjectName,
+		LeaderElect: *leaderElect,
+		LeaseDuration: *leaseDuration,
+		RenewDuration: *renewDuration,
+		RetryPeriodDuration: *retryPeriodDuration,
+		ResourceLock: *resourceLock,
 	}
 	return true, config, nil
 }

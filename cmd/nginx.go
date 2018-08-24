@@ -4,7 +4,6 @@ import (
 	"errors"
 	"html/template"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 
@@ -25,6 +24,7 @@ const (
 	TcpNopush              = "on"
 	TcpNodelay             = "on"
 	ProxypassSep           = "_"
+	SplitSep			   = ","
 )
 
 var (
@@ -34,6 +34,8 @@ var (
 	NginxTestFile = "/etc/nginx/nginx-test.conf"
 	NginxCheck    = "/usr/sbin/nginx -t -c " + NginxTestFile
 	NginxTmpPath  = "/etc/nginx/template/nginx.tmpl"
+
+	tplFuncMap template.FuncMap
 )
 
 func RunCmd(truecmd string) (string, error) {
@@ -48,19 +50,19 @@ func RunCmd(truecmd string) (string, error) {
 	stdout, err := cmd.StdoutPipe()
 	defer stdout.Close()
 	if err != nil {
-		log.Println("runCmd: stdoutPipe: " + err.Error())
+		glog.Info("runCmd: stdoutPipe: " + err.Error())
 		return "", err
 	}
 
 	stderr, err := cmd.StderrPipe()
 	defer stderr.Close()
 	if err != nil {
-		log.Println("runCmd: stderrPipe: ", err.Error())
+		glog.Info("runCmd: stderrPipe: ", err.Error())
 		return "", err
 	}
 
 	if err := cmd.Start(); err != nil {
-		log.Println("runCmd: start: ", err.Error())
+		glog.Info("runCmd: start: ", err.Error())
 		return "", err
 	}
 
@@ -114,6 +116,7 @@ func checkIngressValid(cfg ExtendIngressCfg, servers []*Server, upstreams []*Ups
 	for _, upVal := range upstreams {
 		cfg.Upstreams[getProxyPass(upVal.Namespace, upVal.IngressName, upVal.Name, upVal.Port, upVal.Path)] = upVal
 	}
+
 	err := rebuidNginxConf(&cfg, NginxTestFile)
 	if err != nil {
 		return "", err
@@ -131,8 +134,10 @@ func rebuidNginxConf(cfg *ExtendIngressCfg, filePath string) error {
 	if err != nil {
 		glog.Error(err)
 	}
+	tplFuncMap =  make(template.FuncMap)
+	tplFuncMap["Split"] = Split
 	t := template.New("nginx conf rebuid")
-	t, _ = t.Parse(str)
+	t, _ = t.Funcs(tplFuncMap).Parse(str)
 
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 	defer file.Close()
@@ -149,9 +154,7 @@ func rebuidNginxConf(cfg *ExtendIngressCfg, filePath string) error {
 }
 
 func startNginx() {
-	log.Println(NginxStart)
 	_, err := RunCmd(NginxStart)
-	log.Println(NginxStart)
 	if err != nil {
 		glog.Error(err.Error())
 	}
@@ -170,6 +173,11 @@ func getProxyPass(namesapce, ingressName, epName, port, location string) string 
 	} else {
 		return namesapce + ProxypassSep + ingressName + ProxypassSep + epName + ProxypassSep + port
 	}
+}
+
+func Split(s string, d string) []string {
+	arr := strings.Split(s, d)
+	return arr
 }
 
 func ResetNginxComByOS() {
