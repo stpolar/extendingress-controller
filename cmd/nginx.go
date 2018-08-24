@@ -123,7 +123,6 @@ func checkIngressValid(cfg ExtendIngressCfg, servers []*Server, upstreams []*Ups
 	}
 	runStr, err := RunCmd(NginxCheck)
 	if err != nil {
-		//glog.Error(err)
 		return "", err
 	}
 	return runStr, nil
@@ -135,7 +134,10 @@ func rebuidNginxConf(cfg *ExtendIngressCfg, filePath string) error {
 		glog.Error(err)
 	}
 	tplFuncMap =  make(template.FuncMap)
-	tplFuncMap["Split"] = Split
+	tplFuncMap["Split"] = func(s string, d string) []string {
+		arr := strings.Split(s, d)
+		return arr
+	}
 	t := template.New("nginx conf rebuid")
 	t, _ = t.Funcs(tplFuncMap).Parse(str)
 
@@ -153,31 +155,12 @@ func rebuidNginxConf(cfg *ExtendIngressCfg, filePath string) error {
 	return nil
 }
 
-func startNginx() {
-	_, err := RunCmd(NginxStart)
-	if err != nil {
-		glog.Error(err.Error())
-	}
-}
-
-func reloadNginx() {
-	_, err := RunCmd(NginxReload)
-	if err != nil {
-		glog.Error(err.Error())
-	}
-}
-
 func getProxyPass(namesapce, ingressName, epName, port, location string) string {
 	if location != "/" {
 		return namesapce + ProxypassSep + ingressName + ProxypassSep + epName + ProxypassSep + port + ProxypassSep + location[1:]
 	} else {
 		return namesapce + ProxypassSep + ingressName + ProxypassSep + epName + ProxypassSep + port
 	}
-}
-
-func Split(s string, d string) []string {
-	arr := strings.Split(s, d)
-	return arr
 }
 
 func ResetNginxComByOS() {

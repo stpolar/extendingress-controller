@@ -337,9 +337,15 @@ func (e *ExtendIngressCfg) delCmFromCfg(event string) {
 
 func (e *ExtendIngressCfg) startOrReloadNginx() {
 	if e.Start {
-		startNginx()
+		_, err := RunCmd(NginxStart)
+		if err != nil {
+			glog.Error(err.Error())
+		}
 	} else {
-		reloadNginx()
+		_, err := RunCmd(NginxReload)
+		if err != nil {
+			glog.Error(err.Error())
+		}
 	}
 }
 

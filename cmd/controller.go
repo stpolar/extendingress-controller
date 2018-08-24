@@ -30,7 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -48,6 +48,7 @@ import (
 	"k8s.io/kubernetes/pkg/apis/componentconfig"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"runtime"
 )
 
 const controllerAgentName = "extendingress-controller"
@@ -290,7 +291,7 @@ func NewController(
 		OnStartedLeading: electionRun,
 		OnStoppedLeading: func() {
 			controller.election = false
-			runtime.HandleError(fmt.Errorf("lost master"))
+			utilruntime.HandleError(fmt.Errorf("lost master"))
 		},
 	}
 	leaderElector, err := leaderelection.NewLeaderElector(*leaderElectionConfig)
@@ -313,7 +314,7 @@ func (c *Controller) enqueueExtendIngress(obj interface{}, event string) {
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-		runtime.HandleError(err)
+		utilruntime.HandleError(err)
 		return
 	}
 	if strings.Contains(event, "Del") {
@@ -387,7 +388,7 @@ func (c *Controller) handleConfigmapObj(obj interface{}, commonConf, eventConf, 
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-		runtime.HandleError(err)
+		utilruntime.HandleError(err)
 		return "", err
 	}
 	// strings.Contains(commonConf, key)
@@ -406,7 +407,7 @@ func (c *Controller) handleConfigmapObj(obj interface{}, commonConf, eventConf, 
 // is closed, at which point it will shutdown the workqueue and wait for
 // workers to finish processing their current work items.
 func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
-	defer runtime.HandleCrash()
+	defer utilruntime.HandleCrash()
 	defer c.workqueue.ShutDown()
 
 	// Start the informer factories to begin populating the informer caches
@@ -470,7 +471,7 @@ func (c *Controller) processNextWorkItem() bool {
 			// Forget here else we'd go into a loop of attempting to
 			// process a work item that is invalid.
 			c.workqueue.Forget(obj)
-			runtime.HandleError(fmt.Errorf("expected string in workqueue but got %#v", obj))
+			utilruntime.HandleError(fmt.Errorf("expected string in workqueue but got %#v", obj))
 			return nil
 		}
 		// Run the syncHandler, passing it the namespace/name string of the
@@ -486,7 +487,7 @@ func (c *Controller) processNextWorkItem() bool {
 	}(obj)
 
 	if err != nil {
-		runtime.HandleError(err)
+		utilruntime.HandleError(err)
 		return true
 	}
 
@@ -624,7 +625,7 @@ func (c *Controller) syncHandler(key string) error {
 				// The ExtendIngress resource may no longer exist, in which case we stop
 				// processing.
 				if apierrors.IsNotFound(err) {
-					runtime.HandleError(fmt.Errorf("ExtendIngress '%s' in work queue no longer exists", key))
+					utilruntime.HandleError(fmt.Errorf("ExtendIngress '%s' in work queue no longer exists", key))
 					return nil
 				}
 				return err
@@ -642,13 +643,13 @@ func (c *Controller) syncHandler(key string) error {
 				glog.Error(err.Error())
 			}
 			if c.election {
-				glog.V(4).Info("leader update extend ingress %s/%s.", splitStr[1], splitStr[2])
+				glog.V(3).Info("leader update extend ingress %s/%s.", splitStr[1], splitStr[2])
 				_, err = c.extendIngresslientset.ExtendingresscontrollerV1alpha1().ExtendIngresses(splitStr[1]).Update(updateIngress)
 				if err != nil {
 					// The ExtendIngress resource may no longer exist, in which case we stop
 					// processing.
 					if apierrors.IsNotFound(err) {
-						runtime.HandleError(fmt.Errorf("ExtendIngress '%s/%s' update error, %s", splitStr[1], splitStr[2], err.Error()))
+						utilruntime.HandleError(fmt.Errorf("ExtendIngress '%s/%s' update error, %s", splitStr[1], splitStr[2], err.Error()))
 					}
 				}
 			}
@@ -666,7 +667,7 @@ func (c *Controller) syncHandler(key string) error {
 			// The ExtendIngress resource may no longer exist, in which case we stop
 			// processing.
 			if apierrors.IsNotFound(err) {
-				runtime.HandleError(fmt.Errorf("ExtendIngress %s/%s in work queue no longer exists", proxyStr[0], proxyStr[1]))
+				utilruntime.HandleError(fmt.Errorf("ExtendIngress %s/%s in work queue no longer exists", proxyStr[0], proxyStr[1]))
 				return nil
 			}
 			return err
@@ -686,10 +687,13 @@ func (c *Controller) syncHandler(key string) error {
 		time.Sleep(time.Second)
 		if c.workqueue.Len() == 0 {
 			c.extendIngressCfg.rebuildNginxConf()
-			//c.extendIngressCfg.startOrReloadNginx()
+			// we just test in win OS, run in linux
+			if runtime.GOOS != "windows" {
+				c.extendIngressCfg.startOrReloadNginx()
+			}
 			c.extendIngressCfg.Start = false
 		}
 	}
-	glog.V(3).Info(c.extendIngressCfg.jsonString())
+	glog.V(4).Info(c.extendIngressCfg.jsonString())
 	return nil
 }
