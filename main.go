@@ -26,14 +26,12 @@ import (
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
+	"k8s.io/extendingress-controller/cmd"
 	clientset "k8s.io/extendingress-controller/pkg/client/clientset/versioned"
 	informers "k8s.io/extendingress-controller/pkg/client/informers/externalversions"
-	"k8s.io/sample-controller/pkg/signals"
+	"k8s.io/extendingress-controller/pkg/signals"
 	"runtime"
-	"k8s.io/extendingress-controller/cmd"
 )
-
-
 
 func main() {
 	runtime.GOMAXPROCS(3)
@@ -61,8 +59,8 @@ func main() {
 		glog.Fatalf("Error building extendIngress clientset: %s", err.Error())
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second* 0)
-	extendIngressInformerFactory := informers.NewSharedInformerFactory(extendIngressClient, time.Second* 0)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*0)
+	extendIngressInformerFactory := informers.NewSharedInformerFactory(extendIngressClient, time.Second*0)
 
 	controller := cmd.NewController(kubeClient, extendIngressClient,
 		kubeInformerFactory.Core().V1().Endpoints(),
