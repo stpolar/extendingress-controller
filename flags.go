@@ -41,7 +41,7 @@ program runs inside a Kubernetes cluster and local discovery is attempted.`)
 
 		lockObjectName = flags.String("lock-object-name", "ingress" ,"Define the name of the lock object.")
 
-		leaderElect = flags.Bool("leader-elect", false, "Start a leader election client and gain leadership before "+
+		leaderElect = flags.Bool("leader-elect", true, "Start a leader election client and gain leadership before "+
 			"executing the main loop. Enable this when running replicated "+
 			"components for high availability.")
 

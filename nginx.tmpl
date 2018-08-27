@@ -58,7 +58,10 @@ http {
             {{- end }}
 
 			{{- range $conk, $conv := $locv.Conf }}
-			{{ $conk }}            {{ $conv }};
+            {{- $arr := Split $conv ","}}
+            {{range $k, $v := $arr}}
+			{{ $conk }}            {{ $v }};
+            {{- end }}
 			{{- end }}
 
             {{- if ne $locv.ProxyPass "503" }}
