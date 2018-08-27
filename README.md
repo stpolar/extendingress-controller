@@ -8,7 +8,7 @@ extendIngress是对nginx server的个性化配置，本项目实现了k8s下的N
 
 项目总体架构图如下：
 
-![](/assets/controller.png)
+![image](https://github.com/stpolar/extendingress-controller/raw/master/images/controller.png)
 
 关于项目的更多细节可以查看以下几篇博客：
 
@@ -140,7 +140,7 @@ curl -v https://localhost:6443/apis/extendingresscontroller.k8s.io/v1alpha1/name
 
 对于配置项分为common、event、http、location和upstream块，其中common、event和http的配置是全局有效，以configmap为载体，location和upstream块是单个server有效，具体为每个extendIngress对象，以具体的nginx配置为例
 
-![](/assets/nginx-template.png)
+![image1](https://github.com/stpolar/extendingress-controller/raw/master/images/nginx-template.png)
 
 在k8s里是怎么使用到上面的这些参数配置的，在extendIngress程序的启动参数配置了configmap参数--commonConf、--eventConf、--httpConf分别代表common、event和http对应的configmap，将配置配在configmap。location和upstream的yaml示例如下：
 
@@ -171,5 +171,5 @@ spec:
 
 ## 待开发
 
-本extendIngress目前的配置项只支持key-value形式，对于块状配置还不支持
+本extendIngress目前的配置项只支持key-value形式，对于块状配置还不支持。
 
