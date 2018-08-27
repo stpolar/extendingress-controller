@@ -32,7 +32,7 @@ extendIngress是对nginx server的个性化配置，本项目实现了k8s下的N
 
 * 使用curl进行增删查改：
 
-add:  
+add:
 
 ```
 curl -v  --header "Content-Type: application/json" \
@@ -131,14 +131,18 @@ get:
 ```
 curl -v https://localhost:6443/apis/extendingresscontroller.k8s.io/v1alpha1/namespaces/ingress-nginx/extendingresses/foos
 or for all
-curl -v https://localhost:6443/apis/extendingresscontroller.k8s.io/v1alpha1/namespaces/{namespace}
 
+curl -v https://localhost:6443/apis/extendingresscontroller.k8s.io/v1alpha1/namespaces/{namespace}
 ```
 
 * 使用kubectl客户端增删查该
 * 使用其它http client等
 
-对于配置项分为common、event、http、location和upstream块，其中common、event和http的配置是全局有效，以configmap为载体，location和upstream块是单个server有效，具体为每个extendIngress对象，以具体的nginx配置为例![](/assets/nginx-template.png)在k8s里是怎么使用到上面的这些参数配置的，在extendIngress程序的启动参数配置了configmap参数--commonConf、--eventConf、--httpConf分别代表common、event和http对应的configmap，将配置配在configmap。location和upstream的yaml示例如下：
+对于配置项分为common、event、http、location和upstream块，其中common、event和http的配置是全局有效，以configmap为载体，location和upstream块是单个server有效，具体为每个extendIngress对象，以具体的nginx配置为例
+
+![](/assets/nginx-template.png)
+
+在k8s里是怎么使用到上面的这些参数配置的，在extendIngress程序的启动参数配置了configmap参数--commonConf、--eventConf、--httpConf分别代表common、event和http对应的configmap，将配置配在configmap。location和upstream的yaml示例如下：
 
 ```
 apiVersion: extendingresscontroller.k8s.io/v1alpha1
@@ -160,7 +164,7 @@ spec:
         locationParam:
           access_log: "false"
           cors: "true"
-          proxy_set_header: Host       $proxy_host,Connection close,X-real-ip $remote_addr,X-Forwarded-For $proxy_add_x_forwarded_for 
+          proxy_set_header: Host       $proxy_host,Connection close,X-real-ip $remote_addr,X-Forwarded-For $proxy_add_x_forwarded_for
 ```
 
 \*跨域需要在locationParam中配置key为cors，value为true，对于同名key，value合并在一起，以","分隔。
@@ -168,6 +172,4 @@ spec:
 ## 待开发
 
 本extendIngress目前的配置项只支持key-value形式，对于块状配置还不支持
-
-
 
